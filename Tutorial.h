@@ -4,7 +4,11 @@
 #include<stack>
 #include<SOIL2/SOIL2.h>
 #include <glm\gtc\matrix_transform.hpp>
+#include"deltaTime.h"
+#include"Camera.h"
 
+float lastX, lastY;
+bool fisrtMouse = true;//抛弃第一帧标记
 const GLfloat  PI = 3.14159265358979323846f;
 
 //将球横纵划分成50X50的网格
@@ -23,7 +27,7 @@ public:
 	{
 		glDeleteVertexArrays(1, &VAO);
 		glDeleteBuffers(1, &VBO);
-		delete pshader;
+		//delete pshader;
 	}
 	inline void RenderScreen() override final
 	{
@@ -39,8 +43,13 @@ public:
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
 
-		float timeValue = glfwGetTime();          //随时间改变颜色
+		float timeValue = glfwGetTime();          //时间
 		glm::mat4 transform = glm::mat4(1.0f);
+		glm::mat4 proj = glm::perspective(glm::radians(pCamera->GetZoom()),
+			static_cast<float>(WINDOWWIDTH) / static_cast<float>(WINDOWHEIGHT), 0.1f, 100.0f);
+		this->colorShader->SetMatrix4fv("proj", proj);
+		glm::mat4 view = pCamera->GetViewMatrix();
+		this->colorShader->SetMatrix4fv("view", view);
 
 		mStack.push(glm::mat4(1.0f));
 		transform = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
@@ -84,6 +93,7 @@ public:
 	{
 		glfwSetKeyCallback(this->window, KeyCallback);
 		glfwSetFramebufferSizeCallback(this->window, FramebufferSizeCallback);
+		glfwSetCursorPosCallback(this->window, MouseCallback);
 	}
 	void CreateObjects()
 	{
@@ -93,7 +103,7 @@ public:
 	}
 	void CreateShaders()
 	{
-		pshader = new Shader("res/shaders/sphere.vs", "res/shaders/sphere.fs");
+		//pshader = new Shader("res/shaders/sphere.vs", "res/shaders/sphere.fs");
 		colorShader = new Shader("res/shaders/sphereColor.vs", "res/shaders/sphereColor.fs");
 
 	}
@@ -106,8 +116,10 @@ public:
 private:
 	GLuint VAO;
 	GLuint VBO;
-	Shader* pshader;
+	//Shader* pshader;
 	Shader* colorShader;
+	static bool keys[1024];
+	static  std::unique_ptr<Camera> pCamera;
 	GLuint sunTexture, earthTexture, moonTexture; // 纹理
 	void CreateSphere()		//计算球的顶点坐标
 	{
@@ -215,16 +227,54 @@ private:
 		{
 			glfwSetWindowShouldClose(window, GL_TRUE);
 		}
+		if (key >= 0 && key < 1024) {
+			if (action == GLFW_PRESS) {
+				keys[key] = true;
+			}
+			else if (action == GLFW_RELEASE)
+			{
+				keys[key] = false;
+			}
+		}
+		if (keys[GLFW_KEY_W] || keys[GLFW_KEY_UP]) {
+			pCamera->ProcessKeyboard(FORWARD, deltaTime);
+		}
+		if (keys[GLFW_KEY_S] || keys[GLFW_KEY_DOWN]) {
+			pCamera->ProcessKeyboard(BACKWARD, deltaTime);
+		}
+		if (keys[GLFW_KEY_A] || keys[GLFW_KEY_LEFT]) {
+			pCamera->ProcessKeyboard(LEFT, deltaTime);
+		}
+		if (keys[GLFW_KEY_D] || keys[GLFW_KEY_RIGHT]) {
+			pCamera->ProcessKeyboard(RIGHT, deltaTime);
+		}
 	}
 	static void FramebufferSizeCallback(GLFWwindow
 		* window, int width, int height)
 	{
 		glViewport(0, 0, width, height);
 	}
+	static void MouseCallback(GLFWwindow* window, double xPos, double yPos)
+	{
+		GLfloat xOffset, yOffset;
+		if (fisrtMouse)
+		{
+			lastX = xPos;
+			lastY = yPos;
+			fisrtMouse = false;
+		}
+		xOffset = xPos - lastX;
+		yOffset = lastY - yPos;
+		lastX = xPos;
+		lastY = yPos;
+		pCamera->ProcessMouseMove(xOffset, yOffset);
+	}
 
 };
 
-
+std::unique_ptr<Camera> Tutorial::pCamera = std::unique_ptr<Camera>(new
+	Camera(glm::vec3(0.0f, .0f, 5.0f)));
+bool Tutorial::keys[1024] = { false };
 
 
 

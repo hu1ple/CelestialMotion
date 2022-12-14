@@ -20,8 +20,15 @@ int main()
 	tutorial.initUI();
 	tutorial.CreateObjects();
 	tutorial.CreateShaders();
+	float currentTime = 0.0f;
+	float lastTime = 0.0f;
+	//extern float deltaTime;
 	while (!tutorial.IsWindowClosed())
 	{
+		tutorial.RenderScreen();
+		currentTime = glfwGetTime();
+		deltaTime = currentTime - lastTime;
+		lastTime = currentTime;
 		tutorial.RenderScreen();
 	}
 
